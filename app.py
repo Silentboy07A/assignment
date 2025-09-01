@@ -1,56 +1,53 @@
-import os
+from flask import Flask, render_template, request, jsonify
 import requests
-from flask import Flask, jsonify, request
+import os
+from dotenv import load_dotenv
 
-app = Flask(__name__)
+# Load .env locally (ignored in Azure)
+load_dotenv()
 
-# Get TMDB API Key from environment variables
+app = Flask(__name__, static_folder="static", template_folder="templates")
+
+# Get TMDB API key from environment
 TMDB_API_KEY = os.getenv("TMDB_API_KEY")
 
-# Root route - health check
+if not TMDB_API_KEY:
+    raise RuntimeError("❌ TMDB_API_KEY not set. Please configure it as an environment variable.")
+
+# Home route -> serves frontend
 @app.route("/")
 def home():
-    if not TMDB_API_KEY:
-        return "❌ TMDB_API_KEY not set. Please configure it as an environment variable.", 500
-    return "✅ Flask App is running with TMDB API Key set!"
+    return render_template("index.html")
 
-# Trending Movies
-@app.route("/trending")
-def trending():
-    if not TMDB_API_KEY:
-        return jsonify({"error": "TMDB_API_KEY not set"}), 500
-    
-    url = f"https://api.themoviedb.org/3/trending/movie/week?api_key={TMDB_API_KEY}"
-    response = requests.get(url)
-    return jsonify(response.json())
-
-# Search Movies
-@app.route("/search")
-def search():
-    if not TMDB_API_KEY:
-        return jsonify({"error": "TMDB_API_KEY not set"}), 500
-    
+# Search movie by name
+@app.route("/search", methods=["GET"])
+def search_movie():
     query = request.args.get("query")
     if not query:
-        return jsonify({"error": "Missing 'query' parameter"}), 400
-    
+        return jsonify({"error": "No query provided"}), 400
+
     url = f"https://api.themoviedb.org/3/search/movie?api_key={TMDB_API_KEY}&query={query}"
     response = requests.get(url)
+
+    if response.status_code != 200:
+        return jsonify({"error": "Failed to fetch from TMDB"}), 500
+
     return jsonify(response.json())
 
-# Movie Recommendations
-@app.route("/recommend")
-def recommend():
-    if not TMDB_API_KEY:
-        return jsonify({"error": "TMDB_API_KEY not set"}), 500
-    
+# Recommend similar movies
+@app.route("/recommend", methods=["GET"])
+def recommend_movies():
     movie_id = request.args.get("movie_id")
     if not movie_id:
-        return jsonify({"error": "Missing 'movie_id' parameter"}), 400
-    
-    url = f"https://api.themoviedb.org/3/movie/{movie_id}/recommendations?api_key={TMDB_API_KEY}"
+        return jsonify({"error": "No movie_id provided"}), 400
+
+    url = f"https://api.themoviedb.org/3/movie/{movie_id}/similar?api_key={TMDB_API_KEY}"
     response = requests.get(url)
+
+    if response.status_code != 200:
+        return jsonify({"error": "Failed to fetch recommendations"}), 500
+
     return jsonify(response.json())
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
+    app.run(debug=True)
