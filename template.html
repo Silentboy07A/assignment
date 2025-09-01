@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Movie Recommender</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; background: #f9f9f9; }
+    h1 { margin-top: 20px; }
+    .movie { display: inline-block; margin: 15px; width: 200px; vertical-align: top; }
+    img { width: 100%; border-radius: 10px; }
+    input, button { padding: 10px; margin-top: 20px; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <h1>🎬 Real-Time Movie Recommender</h1>
+  
+  <form method="POST" action="/search">
+    <input type="text" name="query" placeholder="Search for a movie" required>
+    <button type="submit">Search</button>
+  </form>
+
+  {% if query %}
+    <h2>Results for "{{ query }}"</h2>
+  {% else %}
+    <h2>Popular Movies</h2>
+  {% endif %}
+
+  <div>
+    {% for movie in movies %}
+      <div class="movie">
+        <img src="https://image.tmdb.org/t/p/w200{{ movie.poster_path }}" alt="Poster">
+        <h4>{{ movie.title }}</h4>
+        <p>⭐ {{ movie.vote_average }}</p>
+      </div>
+    {% endfor %}
+  </div>
+</body>
+</html>
