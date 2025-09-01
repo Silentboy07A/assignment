@@ -3,58 +3,32 @@ import requests
 import os
 from dotenv import load_dotenv
 
-# ✅ Load .env only in local dev (ignored on Azure)
+# Load .env only in local dev (ignored on Azure)
 load_dotenv()
 
 app = Flask(__name__)
 
-# ✅ Get TMDB API key from environment
+# Get TMDB API key from environment
 TMDB_API_KEY = os.getenv("TMDB_API_KEY")
 
+# If API key is missing, return error page instead of crashing
 if not TMDB_API_KEY:
-    raise RuntimeError("❌ TMDB_API_KEY not set. Please configure it as an environment variable.")
+    @app.route("/")
+    def missing_key():
+        return "❌ TMDB_API_KEY not set. Please configure it in Azure App Settings.", 500
+else:
+    @app.route("/")
+    def home():
+        return "✅ Flask App is running with TMDB API Key set!"
 
-# ----------------------------
-# Home Page
-# ----------------------------
-@app.route("/")
-def home():
-    return render_template("index.html")
+    @app.route("/movies")
+    def get_movies():
+        url = f"https://api.themoviedb.org/3/movie/popular?api_key={TMDB_API_KEY}&language=en-US&page=1"
+        response = requests.get(url)
+        if response.status_code == 200:
+            return jsonify(response.json())
+        return jsonify({"error": "Failed to fetch movies"}), 500
 
-# ----------------------------
-# Movie Search API
-# ----------------------------
-@app.route("/search", methods=["GET"])
-def search_movies():
-    query = request.args.get("q")
-    if not query:
-        return jsonify({"error": "Missing query"}), 400
 
-    url = f"https://api.themoviedb.org/3/search/movie?api_key={TMDB_API_KEY}&query={query}"
-    response = requests.get(url)
-
-    if response.status_code != 200:
-        return jsonify({"error": "Failed to fetch from TMDB"}), 500
-
-    data = response.json()
-    return jsonify(data)
-
-# ----------------------------
-# Popular Movies API
-# ----------------------------
-@app.route("/popular", methods=["GET"])
-def popular_movies():
-    url = f"https://api.themoviedb.org/3/movie/popular?api_key={TMDB_API_KEY}"
-    response = requests.get(url)
-
-    if response.status_code != 200:
-        return jsonify({"error": "Failed to fetch popular movies"}), 500
-
-    data = response.json()
-    return jsonify(data)
-
-# ----------------------------
-# Flask Entry Point
-# ----------------------------
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=8000)
